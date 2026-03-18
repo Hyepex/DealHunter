@@ -656,6 +656,7 @@ Analyze these PC game deals:\n\n${dealList}\n\nRespond with:\n1. <h3>Picks For Y
   }
 });
 
-app.listen(3000, () => {
-  console.log('DealHunter running at http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', function() {
+    console.log('DealHunter running on port ' + PORT);
 });
