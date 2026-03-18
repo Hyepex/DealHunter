@@ -511,12 +511,18 @@ app.get('/api/price-history/:gameTitle', async (req, res) => {
 // === Deals (public) ===
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const parsed = new URL(url);
+    const options = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      headers: { 'User-Agent': 'DealHunter/1.0' }
+    };
+    https.get(options, (res) => {
       let body = '';
       res.on('data', (chunk) => body += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(body)); }
-        catch (e) { reject(new Error('Failed to parse response')); }
+        catch (e) { reject(new Error('Failed to parse response from ' + parsed.hostname + ': ' + body.substring(0, 200))); }
       });
     }).on('error', reject);
   });

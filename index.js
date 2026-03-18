@@ -8,10 +8,19 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 function fetchData(url) {
     return new Promise(function(resolve, reject) {
-        https.get(url, function(response) {
+        var parsed = new URL(url);
+        var options = {
+            hostname: parsed.hostname,
+            path: parsed.pathname + parsed.search,
+            headers: { 'User-Agent': 'DealHunter/1.0' }
+        };
+        https.get(options, function(response) {
             let data = '';
             response.on('data', function(chunk) { data += chunk; });
-            response.on('end', function() { resolve(JSON.parse(data)); });
+            response.on('end', function() {
+                try { resolve(JSON.parse(data)); }
+                catch (e) { reject(new Error('Failed to parse response from ' + parsed.hostname)); }
+            });
         }).on('error', reject);
     });
 }
