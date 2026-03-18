@@ -529,69 +529,85 @@ function fetchJSON(url) {
 }
 
 app.get('/api/deals', optionalAuth, async (req, res) => {
+  // Step 1: Fetch deals from CheapShark (required — fail if this fails)
+  let stores, rawDeals;
   try {
-    const [stores, rawDeals] = await Promise.all([
+    [stores, rawDeals] = await Promise.all([
       fetchJSON('https://www.cheapshark.com/api/1.0/stores'),
       fetchJSON('https://www.cheapshark.com/api/1.0/deals?pageSize=20&sortBy=Deal%20Rating'),
     ]);
+    if (!Array.isArray(rawDeals)) throw new Error('CheapShark returned non-array: ' + typeof rawDeals);
+    if (!Array.isArray(stores)) stores = [];
+  } catch (err) {
+    console.error('[DEALS] CheapShark fetch failed:', err.message);
+    return res.status(502).json({ error: 'Failed to fetch deals from CheapShark. ' + err.message });
+  }
 
-    const storeMap = {};
-    stores.forEach((s) => { storeMap[s.storeID] = s.storeName; });
+  const storeMap = {};
+  stores.forEach((s) => { storeMap[s.storeID] = s.storeName; });
 
-    const deals = rawDeals.map((d) => ({
-      title: d.title,
-      normalPrice: d.normalPrice,
+  const deals = rawDeals.map((d) => ({
+    title: d.title,
+    normalPrice: d.normalPrice,
+    salePrice: d.salePrice,
+    savings: Math.round(parseFloat(d.savings)),
+    store: storeMap[d.storeID] || 'Unknown',
+    dealRating: parseFloat(d.dealRating),
+    thumb: d.thumb,
+    dealID: d.dealID,
+    steamAppID: d.steamAppID || null,
+    steamRatingPercent: d.steamRatingPercent ? parseInt(d.steamRatingPercent) : null,
+    steamRatingText: d.steamRatingText || null,
+    steamRatingCount: d.steamRatingCount ? parseInt(d.steamRatingCount) : 0,
+  }));
+
+  // Step 2: Fetch Steam genres (optional — skip on failure)
+  let genreMap = {};
+  try {
+    genreMap = await fetchSteamGenres(deals);
+  } catch (err) {
+    console.error('[DEALS] Steam genre fetch failed:', err.message);
+  }
+
+  // Step 3: Group deals
+  const groups = {};
+  deals.forEach(d => {
+    const key = normalize(d.title);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(d);
+  });
+  const groupedDeals = Object.values(groups).map(group => {
+    group.sort((a, b) => parseFloat(a.salePrice) - parseFloat(b.salePrice));
+    const primary = { ...group[0] };
+    primary.otherDeals = group.slice(1).map(d => ({
+      store: d.store,
       salePrice: d.salePrice,
-      savings: Math.round(parseFloat(d.savings)),
-      store: storeMap[d.storeID] || 'Unknown',
-      dealRating: parseFloat(d.dealRating),
-      thumb: d.thumb,
+      normalPrice: d.normalPrice,
+      savings: d.savings,
       dealID: d.dealID,
-      steamAppID: d.steamAppID || null,
-      steamRatingPercent: d.steamRatingPercent ? parseInt(d.steamRatingPercent) : null,
-      steamRatingText: d.steamRatingText || null,
-      steamRatingCount: d.steamRatingCount ? parseInt(d.steamRatingCount) : 0,
+      dealRating: d.dealRating,
     }));
+    primary.genres = genreMap[primary.title] || [];
+    return primary;
+  });
 
-    // Fetch Steam genres (cached, non-blocking for individual failures)
-    let genreMap = {};
-    try {
-      genreMap = await fetchSteamGenres(deals);
-    } catch { /* skip if entire genre fetch fails */ }
+  // Step 4: Calculate buy/wait signals (optional — skip on failure)
+  let signalMap = {};
+  try {
+    signalMap = await calculateSignals(groupedDeals);
+  } catch (err) {
+    console.error('[DEALS] Signal calculation failed:', err.message);
+  }
+  for (const deal of groupedDeals) {
+    const sig = signalMap[deal.title];
+    deal.signal = sig ? sig.signal : 'NEW';
+    deal.lowestEver = sig ? sig.lowestEver : null;
+  }
 
-    const groups = {};
-    deals.forEach(d => {
-      const key = normalize(d.title);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(d);
-    });
-    const groupedDeals = Object.values(groups).map(group => {
-      group.sort((a, b) => parseFloat(a.salePrice) - parseFloat(b.salePrice));
-      const primary = { ...group[0] };
-      primary.otherDeals = group.slice(1).map(d => ({
-        store: d.store,
-        salePrice: d.salePrice,
-        normalPrice: d.normalPrice,
-        savings: d.savings,
-        dealID: d.dealID,
-        dealRating: d.dealRating,
-      }));
-      primary.genres = genreMap[primary.title] || [];
-      return primary;
-    });
-
-    // Calculate buy/wait signals from price history
-    let signalMap = {};
-    try {
-      signalMap = await calculateSignals(groupedDeals);
-    } catch {}
-    for (const deal of groupedDeals) {
-      const sig = signalMap[deal.title];
-      deal.signal = sig ? sig.signal : 'NEW';
-      deal.lowestEver = sig ? sig.lowestEver : null;
-    }
-
-    // Build deal list for AI prompt
+  // Step 5: AI analysis (optional — return deals without analysis on failure)
+  let analysis = '';
+  let personalized = false;
+  try {
     const dealList = groupedDeals
       .map((d, i) => {
         const steam = d.steamRatingPercent != null
@@ -611,7 +627,6 @@ app.get('/api/deals', optionalAuth, async (req, res) => {
 
     // Check if user has genre preferences for personalized analysis
     let userGenres = [];
-    let personalized = false;
     if (req.userId) {
       try {
         const user = await User.findById(req.userId).select('genres').lean();
@@ -619,7 +634,9 @@ app.get('/api/deals', optionalAuth, async (req, res) => {
           userGenres = user.genres;
           personalized = true;
         }
-      } catch {}
+      } catch (err) {
+        console.error('[DEALS] User preferences fetch failed:', err.message);
+      }
     }
 
     const systemPrompt = 'You are a savvy PC gaming deal analyst. You have Steam review scores, genre data, and buy/wait price signals for each game. FACTOR GAME QUALITY INTO YOUR ANALYSIS. A 95% off game with "Overwhelmingly Negative" reviews is NOT a good deal. Price alone does not make a deal good — quality matters. Use buy/wait signals: ALL-TIME LOW means buy now urgently, WAIT means it was cheaper recently. Respond using ONLY these HTML tags: <h3>, <p>, <strong>, <em>, <ul>, <li>. Do NOT use markdown. Do NOT use code blocks. Do NOT wrap output in ```.';
@@ -648,18 +665,18 @@ Analyze these PC game deals:\n\n${dealList}\n\nRespond with:\n1. <h3>Picks For Y
       max_tokens: 1000,
     });
 
-    let analysis = completion.choices[0].message.content;
+    analysis = completion.choices[0].message.content;
     analysis = analysis.replace(/```html?\n?/g, '').replace(/```\n?/g, '').trim();
-
-    // Save price snapshot & seed if needed (non-blocking)
-    savePriceSnapshot(groupedDeals).catch(() => {});
-    seedPriceHistory(groupedDeals).catch(() => {});
-
-    res.json({ deals: groupedDeals, analysis, personalized, timestamp: new Date().toISOString() });
   } catch (err) {
-    console.error('API Error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch and analyze deals. Please try again.' });
+    console.error('[DEALS] AI analysis failed:', err.message);
+    // Continue without analysis — deals still work
   }
+
+  // Step 6: Save price history (non-blocking, fire and forget)
+  savePriceSnapshot(groupedDeals).catch(err => console.error('[DEALS] Price snapshot failed:', err.message));
+  seedPriceHistory(groupedDeals).catch(err => console.error('[DEALS] Price seed failed:', err.message));
+
+  res.json({ deals: groupedDeals, analysis, personalized, timestamp: new Date().toISOString() });
 });
 
 const PORT = process.env.PORT || 3000;
