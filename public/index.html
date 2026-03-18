@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DealHunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#fafafa;
+  color:#1a1a1a;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+}
+a{text-decoration:none;color:inherit}
+
+/* Animations */
+@keyframes skPulse{0%,100%{opacity:.35}50%{opacity:.15}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes heroGrad{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes scrollLine{0%{transform:scaleY(0);transform-origin:top}100%{transform:scaleY(1);transform-origin:top}}
+
+
+/* Layout */
+.container{max-width:1200px;margin:0 auto;padding:0 2rem}
+
+/* ===== NAV ===== */
+.nav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(250,250,250,.92);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid transparent;
+  transition:border-color .2s,box-shadow .2s;
+}
+.nav.scrolled{border-bottom-color:#e5e5e5;box-shadow:0 1px 8px rgba(0,0,0,.04)}
+.nav-inner{
+  max-width:1200px;margin:0 auto;padding:0 2rem;
+  height:52px;display:flex;align-items:center;gap:1rem;
+}
+.nav-brand{display:flex;align-items:center;gap:.4rem;font-size:1rem;font-weight:700;color:#1a1a1a;flex-shrink:0;letter-spacing:-.4px}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:#5B5FC7;flex-shrink:0}
+.nav-pills{display:flex;align-items:center;gap:.15rem;flex:1;justify-content:center;overflow-x:auto;scrollbar-width:none}
+.nav-pills::-webkit-scrollbar{display:none}
+.pill{
+  padding:.3rem .75rem;border-radius:999px;border:none;
+  background:transparent;color:#888;font-size:.78rem;font-family:inherit;font-weight:500;
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+}
+.pill:hover{color:#1a1a1a;background:#f0f0f0}
+.pill.active{background:#1a1a1a;color:#fff}
+.nav-right{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.nav-search-btn{
+  background:none;border:none;color:#888;cursor:pointer;padding:.3rem;
+  display:flex;align-items:center;transition:color .15s;
+}
+.nav-search-btn:hover{color:#1a1a1a}
+.nav-search-input{
+  width:0;overflow:hidden;border:none;background:#f0f0f0;border-radius:8px;
+  padding:.4rem .7rem;font-size:.82rem;font-family:inherit;color:#1a1a1a;outline:none;
+  transition:width .3s ease,padding .3s ease,opacity .3s ease;opacity:0;
+}
+.nav-search-input.open{width:180px;opacity:1;padding:.4rem .7rem}
+.nav-search-input::placeholder{color:#aaa}
+.nav-user{font-size:.78rem;font-weight:500;color:#666}
+.nav-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover}
+.btn-auth{
+  padding:.35rem .85rem;border-radius:8px;border:1px solid #e5e5e5;
+  background:#fff;color:#1a1a1a;font-size:.78rem;font-family:inherit;font-weight:500;
+  cursor:pointer;transition:all .15s;
+}
+.btn-auth:hover{border-color:#ccc;background:#f5f5f5}
+.btn-auth.out{color:#888;border-color:#eee}
+.btn-auth.out:hover{color:#dc2626;border-color:#fecaca}
+.btn-gear{background:none;border:none;color:#bbb;cursor:pointer;padding:.2rem;display:flex;align-items:center;transition:color .15s}
+.btn-gear:hover{color:#5B5FC7}
+
+/* ===== HERO ===== */
+.hero{
+  min-height:85vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:6rem 2rem 3rem;position:relative;
+  background:linear-gradient(135deg,#fafafa 0%,#f5f0eb 25%,#f0eef5 50%,#ebf0f5 75%,#fafafa 100%);
+  background-size:300% 300%;animation:heroGrad 20s ease infinite;
+}
+.hero-content{position:relative;z-index:1;max-width:720px;width:100%}
+.hero-h1{
+  font-size:clamp(2.2rem,5vw,3.8rem);font-weight:800;color:#1a1a1a;
+  line-height:1.08;letter-spacing:-.03em;margin-bottom:1rem;
+}
+.hero-sub{font-size:clamp(.9rem,1.8vw,1.1rem);color:#888;line-height:1.6;margin-bottom:2.5rem;font-weight:400}
+.hero-search{
+  position:relative;max-width:520px;margin:0 auto 1.5rem;
+}
+.hero-search svg{position:absolute;left:1.1rem;top:50%;transform:translateY(-50%);color:#bbb;pointer-events:none}
+.hero-search input{
+  width:100%;padding:.9rem 1.1rem .9rem 2.8rem;
+  background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+  color:#1a1a1a;font-size:.92rem;font-family:inherit;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.hero-search input::placeholder{color:#bbb}
+.hero-search input:focus{border-color:#5B5FC7;box-shadow:0 0 0 3px rgba(91,95,199,.08)}
+.hero-meta{font-size:.78rem;color:#aaa;display:flex;align-items:center;justify-content:center;gap:.6rem;flex-wrap:wrap}
+.hero-meta-dot{color:#ddd}
+.hero-scroll{
+  position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);
+  width:1px;height:40px;background:#ddd;
+}
+.hero-scroll::after{
+  content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:#aaa;animation:scrollLine 1.5s ease-in-out infinite;
+}
+
+/* ===== SECTIONS ===== */
+.section{padding:4rem 0}
+.section-head{margin-bottom:2rem}
+.section-title{font-size:1.6rem;font-weight:700;color:#1a1a1a;letter-spacing:-.02em}
+.section-sub{font-size:.82rem;color:#aaa;margin-top:.25rem}
+
+/* ===== AI ===== */
+.ai-card{
+  background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:2rem;
+  border-left:4px solid #5B5FC7;
+}
+.ai-top{display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.ai-label{font-size:.68rem;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.8px}
+.ai-badge{font-size:.65rem;font-weight:600;color:#5B5FC7;background:rgba(91,95,199,.08);padding:.15rem .5rem;border-radius:4px;margin-left:auto}
+.ai-body{font-size:.9rem;line-height:1.75;color:#555}
+.ai-body h3{font-size:.95rem;font-weight:600;color:#1a1a1a;margin:1.5rem 0 .5rem}
+.ai-body h3:first-child{margin-top:0}
+.ai-body p{margin-bottom:.5rem}
+.ai-body strong{color:#1a1a1a;font-weight:600}
+.ai-body em{color:#5B5FC7;font-style:normal}
+.ai-body ul{padding-left:1.25rem;margin-bottom:.5rem}
+.ai-body li{margin-bottom:.3rem}
+
+/* ===== FOR YOU ===== */
+.foryou-scroll{
+  display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;
+  padding-bottom:.75rem;scrollbar-width:none;
+}
+.foryou-scroll::-webkit-scrollbar{display:none}
+.foryou-scroll .card{min-width:280px;max-width:300px;scroll-snap-align:start;flex-shrink:0}
+
+/* ===== WISHLIST BANNER ===== */
+.wl-banner{
+  background:rgba(91,95,199,.04);border:1px solid rgba(91,95,199,.12);
+  border-radius:10px;padding:.65rem 1.25rem;font-size:.82rem;color:#666;
+  margin-bottom:1.5rem;text-align:center;
+}
+.wl-banner strong{color:#5B5FC7}
+
+/* ===== FILTER BAR ===== */
+.filter-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.filter-bar .pill{font-size:.75rem;padding:.28rem .7rem}
+.sort-sel{
+  margin-left:auto;background:#fff;border:1px solid #e5e5e5;border-radius:8px;
+  color:#888;padding:.3rem .5rem;font-size:.75rem;font-family:inherit;outline:none;cursor:pointer;
+}
+.sort-sel option{background:#fff}
+
+/* ===== DEALS GRID ===== */
+.deals-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+
+/* ===== DEAL CARD ===== */
+.card{
+  background:#fff;border:1px solid #eee;border-radius:10px;
+  overflow:hidden;cursor:pointer;transition:border-color .2s,box-shadow .2s;
+}
+.card:hover{border-color:#ddd;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.card-thumb{position:relative;width:100%;aspect-ratio:16/9;background:#f0f0f0;overflow:hidden}
+.card-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.card-badges{position:absolute;top:.5rem;right:.5rem;display:flex;gap:.25rem}
+.badge{padding:.15rem .45rem;border-radius:5px;font-size:.6rem;font-weight:700;letter-spacing:.2px}
+.badge-free{background:#dcfce7;color:#16a34a}
+.badge-insane{background:#fee2e2;color:#dc2626}
+.badge-disc{background:#f0f0f0;color:#666}
+.card-wish{
+  position:absolute;top:.5rem;left:.5rem;width:30px;height:30px;border-radius:50%;
+  background:rgba(255,255,255,.85);border:none;color:#ccc;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .15s,background .15s;z-index:2;backdrop-filter:blur(4px);padding:0;
+}
+.card-wish:hover{color:#5B5FC7;background:#fff}
+.card-wish.active{color:#5B5FC7}
+.card-match{
+  position:absolute;bottom:.5rem;right:.5rem;width:7px;height:7px;
+  border-radius:50%;background:#5B5FC7;box-shadow:0 0 6px rgba(91,95,199,.4);
+}
+.card-body{padding:.75rem .85rem .85rem}
+.card-title{font-size:.85rem;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.2rem;line-height:1.3}
+.card-store{font-size:.68rem;color:#aaa;margin-bottom:.3rem}
+.card-genres{display:flex;flex-wrap:wrap;gap:.2rem;margin-bottom:.4rem}
+.genre-pill{font-size:.58rem;color:#999;background:#f5f5f5;padding:.1rem .35rem;border-radius:3px;white-space:nowrap}
+.genre-more{font-size:.58rem;color:#bbb}
+.card-prices{display:flex;align-items:baseline;gap:.4rem;margin-bottom:.2rem;flex-wrap:wrap}
+.price-old{text-decoration:line-through;color:#ccc;font-size:.78rem}
+.price-sale{font-weight:700;font-size:1.05rem;color:#16a34a}
+.price-sale.free{color:#059669}
+.price-pct{font-size:.65rem;color:#999}
+.signal-badge{font-size:.58rem;font-weight:600;padding:.1rem .35rem;border-radius:3px;white-space:nowrap}
+.signal-atl{background:#dcfce7;color:#16a34a}
+.signal-near{background:#ecfdf5;color:#059669}
+.signal-good{background:#eef2ff;color:#5B5FC7}
+.signal-wait{background:#fef9c3;color:#a16207}
+.signal-drop{background:#dbeafe;color:#2563eb}
+.signal-new{background:#f5f5f5;color:#999}
+.card-lowest{font-size:.62rem;color:#bbb;margin-bottom:.35rem}
+.card-rating{display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem}
+.rating-track{flex:1;height:2px;background:#f0f0f0;border-radius:1px;overflow:hidden}
+.rating-fill{height:100%;background:#5B5FC7;border-radius:1px}
+.rating-lbl{font-size:.62rem;color:#bbb;flex-shrink:0}
+.card-steam{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem}
+.steam-bar{flex-shrink:0;width:28px;height:3px;background:#f0f0f0;border-radius:2px;overflow:hidden}
+.steam-fill{height:100%;border-radius:2px}
+.steam-fill.green{background:#16a34a}
+.steam-fill.yellow{background:#ca8a04}
+.steam-fill.red{background:#dc2626}
+.steam-lbl{font-size:.65rem;color:#aaa;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compare-link{
+  font-size:.68rem;color:#5B5FC7;cursor:pointer;display:inline-flex;align-items:center;gap:.2rem;
+  margin-bottom:.3rem;background:none;border:none;font-family:inherit;padding:0;transition:color .15s;
+}
+.compare-link:hover{color:#4346a5}
+.compare-link svg{transition:transform .2s}
+.compare-link.open svg{transform:rotate(180deg)}
+.compare-panel{max-height:0;overflow:hidden;transition:max-height .2s ease}
+.compare-panel.open{max-height:200px;margin-bottom:.3rem}
+.compare-row{display:flex;align-items:center;padding:.2rem 0;font-size:.72rem;color:#888}
+.compare-row.best{color:#16a34a}
+.compare-best-tag{font-size:.58rem;font-weight:600;color:#16a34a;background:#dcfce7;padding:.08rem .3rem;border-radius:3px;margin-right:.4rem}
+.compare-store{flex:1}
+.compare-price{font-weight:600;flex-shrink:0}
+.ph-link{
+  font-size:.68rem;color:#999;cursor:pointer;display:inline-flex;align-items:center;gap:.25rem;
+  background:none;border:none;font-family:inherit;padding:0;transition:color .15s;margin-top:.15rem;
+}
+.ph-link:hover{color:#5B5FC7}
+
+/* ===== SKELETONS ===== */
+.skel-card{background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden}
+.skel-thumb{width:100%;aspect-ratio:16/9;background:#f0f0f0;animation:skPulse 2s ease-in-out infinite}
+.skel-line{height:10px;background:#f0f0f0;border-radius:4px;margin:.65rem .85rem 0;animation:skPulse 2s ease-in-out infinite}
+.skel-line:last-child{margin-bottom:.85rem}
+.skel-line.w75{width:70%}.skel-line.w60{width:55%}.skel-line.w40{width:35%}
+.skel-ai{background:#fff;border:1px solid #eee;border-left:4px solid #eee;border-radius:12px;height:160px;animation:skPulse 2s ease-in-out infinite}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);z-index:300;display:flex;align-items:center;justify-content:center;
+}
+.modal-close{
+  position:absolute;top:.75rem;right:.85rem;background:none;border:none;
+  color:#bbb;font-size:1.2rem;cursor:pointer;padding:.25rem;line-height:1;transition:color .15s;
+}
+.modal-close:hover{color:#1a1a1a}
+
+/* Auth modal */
+.auth-box{background:#fff;border-radius:16px;width:400px;max-width:92vw;padding:2rem;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.auth-title{font-size:1.15rem;font-weight:700;color:#1a1a1a;margin-bottom:.2rem}
+.auth-hint{font-size:.78rem;color:#dc2626;margin-bottom:.6rem}
+.auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:1px solid #eee}
+.auth-tab{flex:1;background:none;border:none;color:#aaa;padding:.55rem 0;cursor:pointer;font-size:.85rem;font-family:inherit;font-weight:500;border-bottom:2px solid transparent;transition:all .15s}
+.auth-tab:hover{color:#666}
+.auth-tab.active{color:#5B5FC7;border-bottom-color:#5B5FC7}
+.google-btn{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:.6rem;
+  background:#fff;border:1px solid #e5e5e5;color:#1a1a1a;padding:.6rem;border-radius:8px;
+  cursor:pointer;font-size:.85rem;font-family:inherit;font-weight:600;transition:all .15s;margin-bottom:1.25rem;
+}
+.google-btn:hover{background:#f5f5f5;border-color:#ddd}
+.auth-divider{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;color:#ccc;font-size:.72rem}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#eee}
+.auth-field{margin-bottom:.8rem}
+.auth-field label{display:block;font-size:.72rem;color:#999;margin-bottom:.25rem;font-weight:500}
+.auth-field input{
+  width:100%;background:#fafafa;border:1px solid #e5e5e5;color:#1a1a1a;
+  padding:.55rem .75rem;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;transition:border-color .15s;
+}
+.auth-field input::placeholder{color:#bbb}
+.auth-field input:focus{border-color:#5B5FC7}
+.auth-error{color:#dc2626;font-size:.75rem;margin-bottom:.5rem;min-height:.9rem}
+.auth-submit{
+  width:100%;background:#5B5FC7;border:none;color:#fff;padding:.65rem;border-radius:8px;
+  cursor:pointer;font-size:.85rem;font-family:inherit;font-weight:600;transition:background .15s;
+}
+.auth-submit:hover{background:#4e52b5}
+.auth-submit:disabled{opacity:.5;cursor:not-allowed}
+
+/* Preferences modal */
+.pref-box{background:#fff;border-radius:16px;width:480px;max-width:92vw;padding:2rem;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.pref-title{font-size:1.1rem;font-weight:700;color:#1a1a1a;margin-bottom:.2rem}
+.pref-sub{font-size:.82rem;color:#aaa;margin-bottom:1.5rem}
+.pref-grid{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.5rem}
+.pref-pill{
+  padding:.4rem .85rem;border-radius:999px;border:1px solid #e5e5e5;background:#fff;
+  color:#888;font-size:.82rem;font-family:inherit;font-weight:500;cursor:pointer;transition:all .15s;
+}
+.pref-pill:hover{border-color:#ccc;color:#1a1a1a}
+.pref-pill.sel{background:#5B5FC7;border-color:#5B5FC7;color:#fff}
+.pref-save{
+  width:100%;background:#5B5FC7;border:none;color:#fff;padding:.65rem;border-radius:8px;
+  cursor:pointer;font-size:.85rem;font-family:inherit;font-weight:600;transition:background .15s;
+}
+.pref-save:hover{background:#4e52b5}
+.pref-save:disabled{opacity:.5;cursor:not-allowed}
+.pref-ok{text-align:center;color:#16a34a;font-size:.8rem;font-weight:500;margin-top:.6rem}
+
+/* Price history modal */
+.ph-box{background:#fff;border-radius:16px;width:680px;max-width:92vw;padding:1.75rem;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.ph-title{font-size:1.05rem;font-weight:700;color:#1a1a1a;margin-bottom:.15rem;padding-right:2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph-sub{font-size:.72rem;color:#aaa;margin-bottom:1.25rem}
+.ph-chart{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:1rem;min-height:260px}
+.ph-loading{display:flex;align-items:center;justify-content:center;min-height:260px;color:#aaa;font-size:.82rem;gap:.5rem}
+.ph-loading svg{animation:spin 1s linear infinite}
+.ph-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;color:#aaa;font-size:.82rem;text-align:center;gap:.5rem}
+.ph-lowest{display:inline-flex;align-items:center;gap:.3rem;background:#dcfce7;color:#16a34a;padding:.3rem .65rem;border-radius:6px;font-size:.75rem;font-weight:600;margin-top:1rem}
+.ph-stats{display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap}
+.ph-stat{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:.45rem .7rem;flex:1;min-width:90px}
+.ph-stat-lbl{font-size:.6rem;color:#aaa;margin-bottom:.1rem;text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.ph-stat-val{font-size:.9rem;font-weight:700;color:#1a1a1a}
+.ph-stat-val.green{color:#16a34a}
+.ph-stat-val.red{color:#dc2626}
+.ph-stat-val.indigo{color:#5B5FC7}
+
+/* ===== ERROR ===== */
+.error-box{text-align:center;padding:3rem 1rem;color:#888}
+.error-box p{margin-bottom:1rem}
+.error-box button{background:#5B5FC7;border:none;color:#fff;padding:.5rem 1.25rem;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:.85rem}
+
+/* ===== FOOTER ===== */
+.footer{
+  margin-top:4rem;background:#f5f5f0;padding:3rem 2rem 2rem;text-align:center;
+  border-top:1px solid #eee;
+}
+.footer-brand{font-size:1rem;font-weight:700;color:#1a1a1a;margin-bottom:.25rem}
+.footer-tag{font-size:.78rem;color:#aaa;margin-bottom:.5rem}
+.footer-credit{font-size:.72rem;color:#ccc}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1100px){.deals-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:800px){
+  .deals-grid{grid-template-columns:repeat(2,1fr)}
+  .nav-pills{display:none}
+  .nav-inner{padding:0 1rem}
+  .container{padding:0 1rem}
+  .hero{min-height:70vh;padding:4rem 1.5rem 2.5rem}
+  .hero-h1{letter-spacing:-.02em}
+}
+@media(max-width:520px){
+  .deals-grid{grid-template-columns:1fr}
+  .hero-h1{font-size:2rem}
+  .section-title{font-size:1.3rem}
+  .ph-box,.pref-box{padding:1.25rem}
+  .foryou-scroll .card{min-width:250px}
+}
+
+/* Mobile filters */
+.mob-filters{display:none;overflow-x:auto;scrollbar-width:none;gap:.2rem;padding:.5rem 0 1rem}
+.mob-filters::-webkit-scrollbar{display:none}
+@media(max-width:800px){.mob-filters{display:flex}}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#ccc;font-family:Inter,sans-serif;font-size:.9rem">Loading...</div></div>
+
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo,useCallback}=React;
+
+/* ===== Intersection Observer hook ===== */
+
+/* ===== ICONS ===== */
+function SearchIcon({size=16}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>}
+function ChevronIcon(){return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>}
+function HeartIcon({filled}){return filled?<svg width="14" height="14" viewBox="0 0 24 24" fill="#5B5FC7" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>}
+function ChartLineIcon(){return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}
+function GearIcon(){return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>}
+function GoogleIcon(){return <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>}
+
+/* ===== NAV ===== */
+function Nav({filter,onFilter,wishlistCount,authUser,onSignIn,onSignOut,onOpenPrefs,search,onSearch}){
+  const [scrolled,setScrolled]=useState(false);
+  const [searchOpen,setSearchOpen]=useState(false);
+  const inputRef=useRef(null);
+  useEffect(()=>{
+    const fn=()=>setScrolled(window.scrollY>8);
+    window.addEventListener('scroll',fn,{passive:true});
+    return ()=>window.removeEventListener('scroll',fn);
+  },[]);
+  useEffect(()=>{if(searchOpen&&inputRef.current)inputRef.current.focus()},[searchOpen]);
+
+  const pills=[
+    {id:'all',label:'All'},
+    {id:'free',label:'Free'},
+    {id:'rated',label:'Top Rated'},
+    {id:'wishlist',label:'Wishlist'+(wishlistCount>0?' ('+wishlistCount+')':'')},
+  ];
+
+  return(
+    <nav className={"nav"+(scrolled?" scrolled":"")}>
+      <div className="nav-inner">
+        <div className="nav-brand"><span className="nav-dot"/>DealHunter</div>
+        <div className="nav-pills">
+          {pills.map(f=><button key={f.id} className={"pill"+(filter===f.id?" active":"")} onClick={()=>onFilter(f.id)}>{f.label}</button>)}
+        </div>
+        <div className="nav-right">
+          <input ref={inputRef} className={"nav-search-input"+(searchOpen?" open":"")} placeholder="Search..." value={search} onChange={e=>onSearch(e.target.value)} onBlur={()=>{if(!search)setSearchOpen(false)}}/>
+          <button className="nav-search-btn" onClick={()=>setSearchOpen(o=>!o)}><SearchIcon size={15}/></button>
+          {authUser?(
+            <React.Fragment>
+              {authUser.profile_picture&&<img className="nav-avatar" src={authUser.profile_picture} alt="" referrerPolicy="no-referrer"/>}
+              <span className="nav-user">{authUser.username}</span>
+              <button className="btn-gear" onClick={onOpenPrefs} title="Preferences"><GearIcon/></button>
+              <button className="btn-auth out" onClick={onSignOut}>Sign Out</button>
+            </React.Fragment>
+          ):(
+            <button className="btn-auth" onClick={onSignIn}>Sign In</button>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+/* ===== HERO ===== */
+function Hero({search,onSearch,deals,loading,timestamp}){
+  const ref=useRef(null);
+  const freeCount=useMemo(()=>deals.filter(d=>parseFloat(d.salePrice)===0).length,[deals]);
+  const ago=useMemo(()=>{
+    if(!timestamp)return'';
+    const m=Math.floor((Date.now()-new Date(timestamp).getTime())/60000);
+    return m<1?'just now':m+'m ago';
+  },[timestamp]);
+
+  // Parallax
+  useEffect(()=>{
+    const fn=()=>{if(ref.current)ref.current.style.transform='translateY('+window.scrollY*.25+'px)'};
+    window.addEventListener('scroll',fn,{passive:true});
+    return ()=>window.removeEventListener('scroll',fn);
+  },[]);
+
+  return(
+    <div className="hero">
+      <div className="hero-content" ref={ref}>
+        <h1 className="hero-h1">Never overpay<br/>for a game.</h1>
+        <p className="hero-sub">AI tracks prices, reviews, and history &mdash; so you don't have to.</p>
+        <div className="hero-search">
+          <SearchIcon size={18}/>
+          <input type="text" placeholder="Search for any game..." value={search} onChange={e=>onSearch(e.target.value)}/>
+        </div>
+        {!loading&&deals.length>0&&(
+          <div className="hero-meta">
+            <span>Tracking {deals.length} deals</span>
+            <span className="hero-meta-dot">&middot;</span>
+            <span>{freeCount} free games</span>
+            {timestamp&&<React.Fragment><span className="hero-meta-dot">&middot;</span><span>Updated {ago}</span></React.Fragment>}
+          </div>
+        )}
+      </div>
+      <div className="hero-scroll"/>
+    </div>
+  );
+}
+
+/* ===== AI PANEL ===== */
+function AIPanel({analysis,loading,personalized}){
+  if(loading)return <div className="section"><div className="container"><div className="skel-ai"/></div></div>;
+  if(!analysis)return null;
+  return(
+    <div className="section">
+      <div className="container">
+        <div className="section-head">
+          <div className="section-title">AI Analysis</div>
+        </div>
+        <div className="ai-card">
+          <div className="ai-top">
+            <span className="ai-label">Powered by Llama 3.3</span>
+            {personalized&&<span className="ai-badge">Personalized for you</span>}
+          </div>
+          <div className="ai-body" dangerouslySetInnerHTML={{__html:analysis}}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== FOR YOU ===== */
+function ForYouSection({deals,userGenres,wishlist,onToggleWishlist,onShowPriceHistory}){
+  const forYou=useMemo(()=>{
+    if(!userGenres.length||!deals.length)return[];
+    return deals.filter(d=>d.genres&&d.genres.some(g=>userGenres.includes(g))).sort((a,b)=>b.dealRating-a.dealRating).slice(0,8);
+  },[deals,userGenres]);
+  if(!forYou.length)return null;
+  return(
+    <div className="section">
+      <div className="container">
+        <div className="section-head">
+          <div className="section-title">For You</div>
+          <div className="section-sub">Based on your preferences</div>
+        </div>
+        <div className="foryou-scroll">
+          {forYou.map((d,i)=><DealCard key={'fy-'+d.dealID+'-'+i} deal={d} index={i} wishlisted={wishlist.some(w=>w.toLowerCase()===d.title.toLowerCase())} onToggleWishlist={onToggleWishlist} onShowPriceHistory={onShowPriceHistory} genreMatch={true}/>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== WISHLIST BANNER ===== */
+function WishlistBanner({matches}){
+  if(!matches.length)return null;
+  const names=matches.slice(0,3).map(d=>d.title);
+  const extra=matches.length>3?' and '+(matches.length-3)+' more':'';
+  return <div className="container" style={{marginBottom:0}}><div className="wl-banner">{matches.length} wishlist game{matches.length!==1?'s':''} on sale: <strong>{names.join(', ')}{extra}</strong></div></div>;
+}
+
+/* ===== PREFERENCES MODAL ===== */
+const ALL_GENRES=['Action','RPG','Strategy','FPS','Adventure','Puzzle','Simulation','Sports','Horror','Indie','Open World','Co-op','Story Rich'];
+function PreferencesModal({show,onClose,authToken,initialGenres,onSaved}){
+  const [sel,setSel]=useState([]);
+  const [saving,setSaving]=useState(false);
+  const [saved,setSaved]=useState(false);
+  useEffect(()=>{if(show){setSel(initialGenres||[]);setSaved(false)}},[show]);
+  function toggle(g){setSel(p=>p.includes(g)?p.filter(x=>x!==g):[...p,g]);setSaved(false)}
+  async function save(){
+    setSaving(true);
+    try{
+      const r=await fetch('/api/preferences',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+authToken},body:JSON.stringify({genres:sel})});
+      if(r.ok){const d=await r.json();onSaved(d.genres);setSaved(true);setTimeout(()=>onClose(),500)}
+    }catch{}
+    setSaving(false);
+  }
+  if(!show)return null;
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="pref-box" onClick={e=>e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>&times;</button>
+        <div className="pref-title">Game Preferences</div>
+        <div className="pref-sub">What kind of games do you like?</div>
+        <div className="pref-grid">
+          {ALL_GENRES.map(g=><button key={g} className={"pref-pill"+(sel.includes(g)?" sel":"")} onClick={()=>toggle(g)}>{g}</button>)}
+        </div>
+        <button className="pref-save" onClick={save} disabled={saving}>{saving?'Saving...':'Save Preferences'}</button>
+        {saved&&<div className="pref-ok">Saved</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ===== AUTH MODAL ===== */
+function AuthModal({show,onClose,onAuth,hint,googleClientId}){
+  const [tab,setTab]=useState('login');
+  const [username,setUsername]=useState('');
+  const [email,setEmail]=useState('');
+  const [password,setPassword]=useState('');
+  const [error,setError]=useState('');
+  const [loading,setLoading]=useState(false);
+  useEffect(()=>{if(show){setError('');setUsername('');setEmail('');setPassword('')}},[show,tab]);
+  const googleBtnRef=useRef(null);
+  const [googleInited,setGoogleInited]=useState(false);
+  useEffect(()=>{
+    if(!show)return;
+    function init(){
+      if(!window.google||!googleBtnRef.current)return;
+      try{
+        window.google.accounts.id.initialize({
+          client_id:googleClientId,
+          callback:async(response)=>{
+            setError('');setLoading(true);
+            try{
+              const r=await fetch('/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:response.credential})});
+              const d=await r.json();
+              if(!r.ok){setError(d.error||'Google sign-in failed');setLoading(false);return}
+              onAuth(d.token,d.user);onClose();
+            }catch{setError('Network error.')}
+            setLoading(false);
+          },
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current,{type:'standard',theme:'outline',size:'large',width:googleBtnRef.current.offsetWidth,text:'continue_with'});
+        setGoogleInited(true);
+      }catch(e){console.error('Google init:',e)}
+    }
+    if(window.google){setTimeout(init,50)}
+    else{const iv=setInterval(()=>{if(window.google){clearInterval(iv);init()}},200);return ()=>clearInterval(iv)}
+  },[show]);
+  if(!show)return null;
+  async function submit(e){
+    e.preventDefault();setError('');setLoading(true);
+    try{
+      const ep=tab==='login'?'/api/auth/login':'/api/auth/register';
+      const body=tab==='login'?{email,password}:{username,email,password};
+      const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const d=await r.json();
+      if(!r.ok){setError(d.error||'Error');setLoading(false);return}
+      onAuth(d.token,d.user);onClose();
+    }catch{setError('Network error.')}
+    setLoading(false);
+  }
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="auth-box" onClick={e=>e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>&times;</button>
+        <div className="auth-title">Welcome to DealHunter</div>
+        {hint&&<div className="auth-hint">{hint}</div>}
+        <div className="auth-tabs">
+          <button className={"auth-tab"+(tab==='login'?' active':'')} onClick={()=>setTab('login')}>Login</button>
+          <button className={"auth-tab"+(tab==='signup'?' active':'')} onClick={()=>setTab('signup')}>Sign Up</button>
+        </div>
+        <div ref={googleBtnRef} style={{display:'flex',justifyContent:'center',marginBottom:0}}/>
+        {!googleInited&&<button className="google-btn" type="button" onClick={()=>setError('Google Sign-In loading...')}><GoogleIcon/> Continue with Google</button>}
+        <div className="auth-divider">or</div>
+        <form onSubmit={submit}>
+          {tab==='signup'&&<div className="auth-field"><label>Username</label><input type="text" value={username} onChange={e=>setUsername(e.target.value)} placeholder="Choose a username" autoComplete="username"/></div>}
+          <div className="auth-field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email"/></div>
+          <div className="auth-field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={tab==='signup'?'Min 6 characters':'Your password'} autoComplete={tab==='login'?'current-password':'new-password'}/></div>
+          <div className="auth-error">{error}</div>
+          <button className="auth-submit" type="submit" disabled={loading}>{loading?'Please wait...':(tab==='login'?'Sign In':'Create Account')}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ===== PRICE HISTORY MODAL ===== */
+function PriceHistoryModal({show,onClose,deal}){
+  const [history,setHistory]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const chartRef=useRef(null);
+  const chartInst=useRef(null);
+  useEffect(()=>{
+    if(!show||!deal)return;
+    setLoading(true);
+    fetch('/api/price-history/'+encodeURIComponent(deal.title)).then(r=>r.json()).then(d=>{setHistory(d);setLoading(false)}).catch(()=>{setHistory([]);setLoading(false)});
+  },[show,deal?.title]);
+  useEffect(()=>{
+    if(loading||!history.length||!chartRef.current||!window.Chart)return;
+    if(chartInst.current){chartInst.current.destroy();chartInst.current=null}
+    const ctx=chartRef.current.getContext('2d');
+    const np=parseFloat(deal.normalPrice);
+    const byDate={};
+    history.forEach(h=>{const k=new Date(h.timestamp).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(!byDate[k]||h.sale_price<byDate[k])byDate[k]=h.sale_price});
+    const labels=Object.keys(byDate),prices=Object.values(byDate);
+    const lo=Math.min(...prices),hi=Math.max(...prices);
+    const grad=ctx.createLinearGradient(0,0,0,260);
+    grad.addColorStop(0,'rgba(91,95,199,.12)');grad.addColorStop(1,'rgba(91,95,199,0)');
+    const ap=window['chartjs-plugin-annotation'];
+    chartInst.current=new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[{label:'Sale Price',data:prices,borderColor:'#5B5FC7',backgroundColor:grad,borderWidth:2,fill:true,tension:.3,
+        pointRadius:prices.map((_,i)=>i===prices.length-1?5:1.5),
+        pointBackgroundColor:prices.map((_,i)=>i===prices.length-1?'#16a34a':'#5B5FC7'),
+        pointBorderColor:prices.map((_,i)=>i===prices.length-1?'#16a34a':'#5B5FC7'),
+        pointBorderWidth:prices.map((_,i)=>i===prices.length-1?2:0),pointHoverRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},
+          tooltip:{backgroundColor:'#fff',titleColor:'#1a1a1a',bodyColor:'#5B5FC7',borderColor:'#eee',borderWidth:1,padding:10,displayColors:false,callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}},
+          annotation:ap?{annotations:{nl:{type:'line',yMin:np,yMax:np,borderColor:'rgba(220,38,38,.3)',borderWidth:1.5,borderDash:[6,4],label:{display:true,content:'Retail $'+np.toFixed(2),position:'start',backgroundColor:'rgba(220,38,38,.06)',color:'#dc2626',font:{size:10,weight:'600',family:'Inter'},padding:{top:2,bottom:2,left:5,right:5},borderRadius:3}}}}:{}},
+        scales:{
+          x:{grid:{color:'rgba(0,0,0,.03)'},ticks:{color:'#bbb',font:{size:10,family:'Inter'},maxRotation:45},border:{color:'#eee'}},
+          y:{grid:{color:'rgba(0,0,0,.03)'},ticks:{color:'#bbb',font:{size:10,family:'Inter'},callback:v=>'$'+v.toFixed(0)},border:{color:'#eee'},min:Math.max(0,lo-2),max:Math.max(hi+5,np+5)}
+        }},
+      plugins:ap?[ap]:[]
+    });
+    return ()=>{if(chartInst.current){chartInst.current.destroy();chartInst.current=null}};
+  },[loading,history,deal]);
+
+  if(!show||!deal)return null;
+  const np=parseFloat(deal.normalPrice),cp=parseFloat(deal.salePrice);
+  const ap=history.map(h=>h.sale_price);
+  const lo=ap.length?Math.min(...ap):cp,hi=ap.length?Math.max(...ap):cp;
+  const avg=ap.length?(ap.reduce((a,b)=>a+b,0)/ap.length):cp;
+  const isLo=ap.length>1&&cp<=lo;
+  const enough=history.length>=3;
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="ph-box" onClick={e=>e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>&times;</button>
+        <div className="ph-title">{deal.title}</div>
+        <div className="ph-sub">Price history across tracked stores</div>
+        <div className="ph-chart">
+          {loading?<div className="ph-loading"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B5FC7" strokeWidth="2"><circle cx="12" cy="12" r="10" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>Loading...</div>
+          :!enough?<div className="ph-empty"><ChartLineIcon/>Tracking started &mdash; check back in a few days</div>
+          :<div style={{height:'260px'}}><canvas ref={chartRef}/></div>}
+        </div>
+        {!loading&&enough&&<React.Fragment>
+          {isLo&&<div className="ph-lowest">Lowest Price Ever!</div>}
+          <div className="ph-stats">
+            <div className="ph-stat"><div className="ph-stat-lbl">Current</div><div className={"ph-stat-val"+(cp<=avg?" green":"")}>${cp.toFixed(2)}</div></div>
+            <div className="ph-stat"><div className="ph-stat-lbl">Lowest</div><div className="ph-stat-val green">${lo.toFixed(2)}</div></div>
+            <div className="ph-stat"><div className="ph-stat-lbl">Highest</div><div className="ph-stat-val red">${hi.toFixed(2)}</div></div>
+            <div className="ph-stat"><div className="ph-stat-lbl">Average</div><div className="ph-stat-val indigo">${avg.toFixed(2)}</div></div>
+          </div>
+        </React.Fragment>}
+      </div>
+    </div>
+  );
+}
+
+/* ===== DEAL CARD ===== */
+function DealCard({deal,index,wishlisted,onToggleWishlist,onShowPriceHistory,genreMatch}){
+  const [cmpOpen,setCmpOpen]=useState(false);
+  const isFree=parseFloat(deal.salePrice)===0;
+  const isInsane=deal.savings>=80&&!isFree;
+  const pct=Math.min((deal.dealRating/10)*100,100);
+  const hasReview=deal.steamRatingPercent!=null&&deal.steamRatingPercent>0;
+  const rp=deal.steamRatingPercent||0;
+  const tier=rp>=70?'green':rp>=50?'yellow':'red';
+  const rc=deal.steamRatingCount?deal.steamRatingCount.toLocaleString():'';
+  const url='https://www.cheapshark.com/redirect?dealID='+deal.dealID;
+  const multi=deal.otherDeals&&deal.otherDeals.length>0;
+  const total=multi?deal.otherDeals.length+1:1;
+  const sigCls={'ALL-TIME LOW':'signal-atl','NEAR LOWEST':'signal-near','GOOD DEAL':'signal-good','WAIT':'signal-wait','PRICE DROPPING':'signal-drop','NEW':'signal-new'}[deal.signal]||'signal-new';
+
+  return(
+    <div className="card" onClick={()=>window.open(url,'_blank')} title={deal.title}>
+      <div className="card-thumb">
+        <button className={"card-wish"+(wishlisted?" active":"")} onClick={e=>{e.stopPropagation();onToggleWishlist(deal.title)}} title={wishlisted?'Remove':'Add to wishlist'}><HeartIcon filled={wishlisted}/></button>
+        {deal.thumb&&<img src={deal.thumb} alt="" onError={e=>{e.target.style.display='none'}}/>}
+        {genreMatch&&<div className="card-match" title="Matches your preferences"/>}
+        <div className="card-badges">
+          {isFree&&<span className="badge badge-free">FREE</span>}
+          {isInsane&&<span className="badge badge-insane">INSANE DEAL</span>}
+          <span className="badge badge-disc">-{deal.savings}%</span>
+        </div>
+      </div>
+      <div className="card-body">
+        <div className="card-title">{deal.title}</div>
+        <div className="card-store">{deal.store}{multi&&<span style={{color:'#5B5FC7'}}> +{deal.otherDeals.length}</span>}</div>
+        {deal.genres&&deal.genres.length>0&&<div className="card-genres">{deal.genres.slice(0,2).map(g=><span key={g} className="genre-pill">{g}</span>)}{deal.genres.length>2&&<span className="genre-more">+{deal.genres.length-2}</span>}</div>}
+        <div className="card-prices">
+          <span className="price-old">${deal.normalPrice}</span>
+          <span className={"price-sale"+(isFree?" free":"")}>{isFree?'FREE':'$'+deal.salePrice}</span>
+          <span className="price-pct">-{deal.savings}%</span>
+          {deal.signal&&<span className={"signal-badge "+sigCls}>{deal.signal}</span>}
+        </div>
+        {deal.lowestEver!=null&&deal.signal!=='ALL-TIME LOW'&&<div className="card-lowest">Lowest: ${deal.lowestEver.toFixed(2)}</div>}
+        <div className="card-rating"><div className="rating-track"><div className="rating-fill" style={{width:pct+'%'}}/></div><span className="rating-lbl">{deal.dealRating}/10</span></div>
+        {hasReview?<div className="card-steam"><div className="steam-bar"><div className={"steam-fill "+tier} style={{width:rp+'%'}}/></div><span className="steam-lbl">{rp}% {deal.steamRatingText}{rc?' ('+rc+')':''}</span></div>
+        :<div className="card-steam"><div className="steam-bar"/><span className="steam-lbl">No reviews</span></div>}
+        {multi&&<div onClick={e=>e.stopPropagation()}>
+          <button className={"compare-link"+(cmpOpen?" open":"")} onClick={()=>setCmpOpen(!cmpOpen)}>Compare {total} stores <ChevronIcon/></button>
+          <div className={"compare-panel"+(cmpOpen?" open":"")}>
+            <a className="compare-row best" href={url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}><span className="compare-best-tag">Best</span><span className="compare-store">{deal.store}</span><span className="compare-price">{isFree?'FREE':'$'+deal.salePrice}</span></a>
+            {deal.otherDeals.map((od,i)=><a key={i} className="compare-row" href={'https://www.cheapshark.com/redirect?dealID='+od.dealID} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}><span className="compare-store">{od.store}</span><span className="compare-price">${od.salePrice}</span></a>)}
+          </div>
+        </div>}
+        <button className="ph-link" onClick={e=>{e.stopPropagation();onShowPriceHistory(deal)}}><ChartLineIcon/> Price History</button>
+      </div>
+    </div>
+  );
+}
+
+/* ===== DEALS GRID ===== */
+function DealsGrid({deals,loading,wishlist,onToggleWishlist,onShowPriceHistory,userGenres,filter,onFilter,sort,onSort}){
+  const filterPills=[
+    {id:'all',label:'All Deals'},
+    {id:'80',label:'80%+ Off'},
+    {id:'50',label:'50%+ Off'},
+    {id:'free',label:'Free Games'},
+    {id:'rated',label:'Top Rated'},
+  ];
+
+  if(loading){
+    return(
+      <div className="section"><div className="container">
+        <div className="section-head"><div className="section-title">Today's Best Deals</div></div>
+        <div className="deals-grid">{Array.from({length:8},(_,i)=><div key={i} className="skel-card"><div className="skel-thumb"/><div className="skel-line w75"/><div className="skel-line w60"/><div className="skel-line w40"/></div>)}</div>
+      </div></div>
+    );
+  }
+
+  return(
+    <div className="section">
+      <div className="container">
+        <div className="section-head">
+          <div className="section-title">Today's Best Deals</div>
+        </div>
+        <div className="filter-bar">
+          {filterPills.map(f=><button key={f.id} className={"pill"+(filter===f.id?" active":"")} onClick={()=>onFilter(f.id)}>{f.label}</button>)}
+          <select className="sort-sel" value={sort} onChange={e=>onSort(e.target.value)}>
+            <option value="rating">Best Deal Rating</option>
+            <option value="discount">Highest Discount</option>
+            <option value="reviewed">Best Reviewed</option>
+            <option value="priceLow">Price: Low → High</option>
+            <option value="priceHigh">Price: High → Low</option>
+          </select>
+        </div>
+        {!deals.length?<div style={{textAlign:'center',padding:'3rem 0',color:'#aaa'}}>No deals match your filters.</div>
+        :<div className="deals-grid">
+          {deals.map((d,i)=><DealCard key={d.dealID+'-'+i} deal={d} index={i} wishlisted={wishlist.some(w=>w.toLowerCase()===d.title.toLowerCase())} onToggleWishlist={onToggleWishlist} onShowPriceHistory={onShowPriceHistory} genreMatch={userGenres.length>0&&d.genres&&d.genres.some(g=>userGenres.includes(g))}/>)}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+/* ===== APP ===== */
+function App(){
+  const [deals,setDeals]=useState([]);
+  const [analysis,setAnalysis]=useState('');
+  const [timestamp,setTimestamp]=useState('');
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  const [search,setSearch]=useState('');
+  const [filter,setFilter]=useState('all');
+  const [sort,setSort]=useState('rating');
+  const [wishlist,setWishlist]=useState([]);
+  const [authUser,setAuthUser]=useState(null);
+  const [authToken,setAuthToken]=useState(()=>localStorage.getItem('dh_token'));
+  const [showAuth,setShowAuth]=useState(false);
+  const [authHint,setAuthHint]=useState('');
+  const [phDeal,setPhDeal]=useState(null);
+  const [showPrefs,setShowPrefs]=useState(false);
+  const [userGenres,setUserGenres]=useState([]);
+  const [personalized,setPersonalized]=useState(false);
+  const [googleClientId,setGoogleClientId]=useState('');
+
+  // Fetch config (Google Client ID) from backend
+  useEffect(()=>{
+    fetch('/api/config').then(r=>r.json()).then(d=>setGoogleClientId(d.googleClientId)).catch(()=>{});
+  },[]);
+
+  useEffect(()=>{
+    const t=localStorage.getItem('dh_token');
+    if(t){
+      fetch('/api/auth/me',{headers:{Authorization:'Bearer '+t}})
+        .then(r=>r.ok?r.json():Promise.reject())
+        .then(u=>{setAuthUser(u);setAuthToken(t);setUserGenres(u.genres||[])})
+        .catch(()=>{localStorage.removeItem('dh_token');setAuthToken(null)});
+    }
+  },[]);
+
+  function handleAuth(token,user){
+    localStorage.setItem('dh_token',token);
+    setAuthToken(token);setAuthUser(user);setUserGenres(user.genres||[]);
+    if(!user.genres||user.genres.length===0)setTimeout(()=>setShowPrefs(true),400);
+  }
+  function handleSignOut(){localStorage.removeItem('dh_token');setAuthToken(null);setAuthUser(null);setWishlist([])}
+
+  const authHeaders=useCallback(()=>{
+    if(!authToken)return{'Content-Type':'application/json'};
+    return{'Content-Type':'application/json',Authorization:'Bearer '+authToken};
+  },[authToken]);
+
+  const fetchWishlist=useCallback(async()=>{
+    if(!authToken){setWishlist([]);return}
+    try{const r=await fetch('/api/wishlist',{headers:{Authorization:'Bearer '+authToken}});if(r.ok)setWishlist(await r.json())}catch{}
+  },[authToken]);
+  useEffect(()=>{fetchWishlist()},[authToken]);
+
+  const toggleWishlist=useCallback(async(title)=>{
+    if(!authToken){setAuthHint('Sign in to save your wishlist');setShowAuth(true);return}
+    const w=wishlist.some(w=>w.toLowerCase()===title.toLowerCase());
+    if(w){setWishlist(wl=>wl.filter(x=>x.toLowerCase()!==title.toLowerCase()));fetch('/api/wishlist',{method:'DELETE',headers:authHeaders(),body:JSON.stringify({gameTitle:title})})}
+    else{setWishlist(wl=>[...wl,title]);fetch('/api/wishlist',{method:'POST',headers:authHeaders(),body:JSON.stringify({gameTitle:title})})}
+  },[wishlist,authToken,authHeaders]);
+
+  const wishlistMatches=useMemo(()=>{
+    if(!wishlist.length||!deals.length)return[];
+    const s=new Set(wishlist.map(t=>t.toLowerCase()));
+    return deals.filter(d=>s.has(d.title.toLowerCase()));
+  },[deals,wishlist]);
+
+  const fetchDeals=useCallback(async(token)=>{
+    setLoading(true);setError('');
+    try{
+      const h={};const t=token||authToken;if(t)h.Authorization='Bearer '+t;
+      const r=await fetch('/api/deals',{headers:h});
+      if(!r.ok)throw new Error('API error');
+      const d=await r.json();if(d.error)throw new Error(d.error);
+      setDeals(d.deals);setAnalysis(d.analysis);setTimestamp(d.timestamp);setPersonalized(!!d.personalized);
+    }catch(e){setError(e.message||'Failed to load deals')}
+    setLoading(false);
+  },[authToken]);
+  useEffect(()=>{fetchDeals()},[]);
+
+  const filtered=useMemo(()=>{
+    let r=[...deals];
+    const q=search.trim().toLowerCase();
+    if(q)r=r.filter(d=>d.title.toLowerCase().includes(q)||d.store.toLowerCase().includes(q)||(d.otherDeals&&d.otherDeals.some(od=>od.store.toLowerCase().includes(q))));
+    if(filter==='free')r=r.filter(d=>parseFloat(d.salePrice)===0);
+    else if(filter==='80')r=r.filter(d=>d.savings>=80);
+    else if(filter==='50')r=r.filter(d=>d.savings>=50);
+    else if(filter==='rated')r=r.filter(d=>d.steamRatingPercent!=null&&d.steamRatingPercent>=80);
+    else if(filter==='wishlist'){const s=new Set(wishlist.map(t=>t.toLowerCase()));r=r.filter(d=>s.has(d.title.toLowerCase()))}
+    if(sort==='rating')r.sort((a,b)=>b.dealRating-a.dealRating);
+    else if(sort==='discount')r.sort((a,b)=>b.savings-a.savings);
+    else if(sort==='reviewed')r.sort((a,b)=>(b.steamRatingPercent||0)-(a.steamRatingPercent||0));
+    else if(sort==='priceLow')r.sort((a,b)=>parseFloat(a.salePrice)-parseFloat(b.salePrice));
+    else if(sort==='priceHigh')r.sort((a,b)=>parseFloat(b.salePrice)-parseFloat(a.salePrice));
+    return r;
+  },[deals,search,filter,sort,wishlist]);
+
+  return(
+    <div>
+      <AuthModal show={showAuth} onClose={()=>{setShowAuth(false);setAuthHint('')}} onAuth={handleAuth} hint={authHint} googleClientId={googleClientId}/>
+      <PriceHistoryModal show={!!phDeal} onClose={()=>setPhDeal(null)} deal={phDeal}/>
+      <PreferencesModal show={showPrefs} onClose={()=>setShowPrefs(false)} authToken={authToken} initialGenres={userGenres} onSaved={g=>{setUserGenres(g);setAuthUser(u=>u?{...u,genres:g}:u);fetchDeals()}}/>
+      <Nav filter={filter} onFilter={setFilter} wishlistCount={wishlist.length} authUser={authUser} onSignIn={()=>{setAuthHint('');setShowAuth(true)}} onSignOut={handleSignOut} onOpenPrefs={()=>setShowPrefs(true)} search={search} onSearch={setSearch}/>
+      <Hero search={search} onSearch={setSearch} deals={deals} loading={loading} timestamp={timestamp}/>
+
+      <div className="container">
+        <div className="mob-filters">
+          {[{id:'all',label:'All'},{id:'free',label:'Free'},{id:'rated',label:'Top Rated'},{id:'wishlist',label:'Wishlist'}].map(f=><button key={f.id} className={"pill"+(filter===f.id?" active":"")} onClick={()=>setFilter(f.id)}>{f.label}</button>)}
+        </div>
+      </div>
+
+      {error?<div className="error-box"><p>{error}</p><button onClick={fetchDeals}>Try Again</button></div>:(
+        <React.Fragment>
+          <WishlistBanner matches={wishlistMatches}/>
+          <AIPanel analysis={analysis} loading={loading} personalized={personalized}/>
+          {!loading&&userGenres.length>0&&<ForYouSection deals={deals} userGenres={userGenres} wishlist={wishlist} onToggleWishlist={toggleWishlist} onShowPriceHistory={setPhDeal}/>}
+          <DealsGrid deals={filtered} loading={loading} wishlist={wishlist} onToggleWishlist={toggleWishlist} onShowPriceHistory={setPhDeal} userGenres={userGenres} filter={filter} onFilter={setFilter} sort={sort} onSort={setSort}/>
+        </React.Fragment>
+      )}
+      <footer className="footer">
+        <div className="footer-brand">DealHunter</div>
+        <div className="footer-tag">AI-powered game deal intelligence</div>
+        <div className="footer-credit">Built by Harsh</div>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>,document.getElementById('root'));
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+.env
+node_modules/
+.wwebjs_auth/
+.wwebjs_cache/
+.claude/
+deal-history.json
+alerts-sent.json
+wishlist.json
+price-data.json
+price-history.json
