@@ -682,4 +682,8 @@ Analyze these PC game deals:\n\n${dealList}\n\nRespond with:\n1. <h3>Picks For Y
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', function() {
     console.log('DealHunter running on port ' + PORT);
+    console.log('GOOGLE_CLIENT_ID: ' + (GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.substring(0, 10) + '...' : 'NOT SET'));
+    console.log('GROQ_API_KEY: ' + (GROQ_API_KEY ? GROQ_API_KEY.substring(0, 10) + '...' : 'NOT SET'));
+    console.log('MONGODB_URI: ' + (process.env.MONGODB_URI ? 'SET' : 'NOT SET'));
+    console.log('JWT_SECRET: ' + (JWT_SECRET ? 'SET' : 'NOT SET'));
 });
